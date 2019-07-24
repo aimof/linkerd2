@@ -5,6 +5,7 @@ required = [
   "k8s.io/code-generator/cmd/defaulter-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
+  "golang.org/x/sys/unix"
 ]
 
 [[constraint]]
@@ -18,7 +19,7 @@ required = [
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "1.7.0"
+  version = "1.10.0"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
@@ -87,3 +88,7 @@ required = [
 [[constraint]]
   name = "github.com/wercker/stern"
   revision = "b04b5491222d9743529cb859a20d34ce2bb763af" # pin to 1.6.0 until https://github.com/wercker/stern/issues/96 is resolved
+
+[[constraint]]
+   name = "golang.org/x/sys"
+   revision = "1c9583448a9c3aa0f9a6a5241bf73c0bd8aafded" # pin to revision until https://github.com/grpc/grpc-go/issues/2181 is resolved
