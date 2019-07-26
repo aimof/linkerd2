@@ -14,7 +14,6 @@
   imagePullPolicy: {{.Image.PullPolicy}}
   name: linkerd-init
   {{- include "partials.resources" .ResourceRequirements | nindent 2 }}
-  terminationMessagePolicy: FallbackToLogsOnError
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -25,4 +24,5 @@
     readOnlyRootFilesystem: true
     runAsNonRoot: false
     runAsUser: 0
+  terminationMessagePolicy: FallbackToLogsOnError
 {{- end -}}

@@ -9,10 +9,9 @@ ImagePullPolicy: IfNotPresent
 Namespace: &namespace linkerd
 
 # controller configuration
-ControllerReplicas: 3
 ControllerImage: gcr.io/linkerd-io/controller
 ControllerLogLevel: info
-ControllerUID: 2103
+ControllerReplicas: 3
 ControllerResources: &controller_resources
   CPU:
     Limit: "1"
@@ -20,10 +19,42 @@ ControllerResources: &controller_resources
   Memory:
     Limit: 250Mi
     Request: 50Mi
-PublicAPIResources:
-  <<: *controller_resources
+ControllerUID: 2103
 DestinationResources:
   <<: *controller_resources
+PublicAPIResources:
+  <<: *controller_resources
+
+# identity configuration
+Identity:
+  Issuer:
+    # PEM encoded certificate
+    CrtPEM: |
+      -----BEGIN CERTIFICATE-----
+      MIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
+      eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI2MDMxNjQ4WhcNMjAwNzI1
+      MDMxNzA4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
+      YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATwPFIAEAosip9WpovFw3MrJQ3W
+      NqCzU54MXTMUEaNQBNcHyzz8xfZ2vZY56TQQod3HQ8dEcPwRNgTFJxgzdt03o0Iw
+      QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
+      MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJpWjlDgXGo8hgvr
+      WX/H+QmI4sSA3EiW1J9ZNweS94UsAiB9IN9rkv/b47tYsynZCpLTzSeF7+16VdyI
+      DT1weqC2Vg==
+      -----END CERTIFICATE-----
+
+    # Must match the expiry date in CrtPEM
+    CrtExpiry: 2020-07-25T03:17:08Z
+    CrtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+
+    # PEM encode ECDSA private key
+    KeyPEM: |
+      -----BEGIN EC PRIVATE KEY-----
+      MHcCAQEEINfi1j8CjonK4FCuDoCUPXRxVMNResGsQDbFqEXTUeJUoAoGCCqGSM49
+      AwEHoUQDQgAE8DxSABAKLIqfVqaLxcNzKyUN1jags1OeDF0zFBGjUATXB8s8/MX2
+      dr2WOek0EKHdx0PHRHD8ETYExScYM3bdNw==
+      -----END EC PRIVATE KEY-----
+  Resources:
+    <<: *controller_resources
 
 # grafana configuration
 GrafanaImage: gcr.io/linkerd-io/grafana
@@ -31,34 +62,36 @@ GrafanaResources:
   <<: *controller_resources
 
 # heartbeat configuration
-HeartbeatSchedule: "21 3 * * * "
 HeartbeatResources:
   <<: *controller_resources
+HeartbeatSchedule: "21 3 * * * "
 
 # proxy configuration
 Proxy:
   ClusterDomain: *cluster_domain
+  ControlPlaneNamespace: *namespace
   DisableIdentity: false
   EnableExternalProfile: false
   HighAvailability: *high_availability
-  IdentityTrustAnchors: |
-    -----BEGIN CERTIFICATE-----
-    MIIBgjCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
-    eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI0MTY1OTM4WhcNMjAwNzIz
-    MTY1OTU4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
-    YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQQiUcsrdv4rhQ9THRlPQrLshFY
-    YgvHgyAyGfqlrukGR4OsNzv1tX3lNsMZggvqr7skiXozt7R9SwMrTZK7EkU0o0Iw
-    QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
-    MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgHKe2J1SooDemPrjC
-    4YMyvoEmZ/7lGzeUOcIxN8bGcHwCIEp5zIp8+2QEPfKwS01sW0fjQwHBzV87Dm4G
-    eHrLH7qz
-    -----END CERTIFICATE-----
+  Identity:
+    TrustDomain: *cluster_domain
+    TrustAnchors: |
+      -----BEGIN CERTIFICATE-----
+      MIIBgjCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
+      eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNzI0MTY1OTM4WhcNMjAwNzIz
+      MTY1OTU4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
+      YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQQiUcsrdv4rhQ9THRlPQrLshFY
+      YgvHgyAyGfqlrukGR4OsNzv1tX3lNsMZggvqr7skiXozt7R9SwMrTZK7EkU0o0Iw
+      QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
+      MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgHKe2J1SooDemPrjC
+      4YMyvoEmZ/7lGzeUOcIxN8bGcHwCIEp5zIp8+2QEPfKwS01sW0fjQwHBzV87Dm4G
+      eHrLH7qz
+      -----END CERTIFICATE-----
   Image:
     Name: gcr.io/linkerd-io/proxy
     PullPolicy: IfNotPresent
   InboundAcceptKeepAlive: 10000ms
   LogLevel: warn,linkerd2_proxy=info
-  ControlPlaneNamespace: *namespace
   OutboundAcceptKeepAlive: 10000ms
   Port: &proxy_ports
     Admin: 4191

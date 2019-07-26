@@ -30,11 +30,12 @@
     value: /var/run/linkerd/identity/end-entity
   - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
     value: |
-    {{- .IdentityTrustAnchors | trim | nindent 6 }}
+    {{- .Identity.TrustAnchors | trim | nindent 6 }}
   - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
     value: /var/run/secrets/kubernetes.io/serviceaccount/token
   - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-    value: linkerd-identity.{{.ControlPlaneNamespace}}.svc.cluster.local:8080
+    {{- $identitySvcAddr := printf "linkerd-identity.%s.svc.%s:8080" .ControlPlaneNamespace .ClusterDomain }}
+    value: {{ternary "localhost:8080" $identitySvcAddr (eq .Component "identity")}}
   - name: _pod_sa
     valueFrom:
       fieldRef:
@@ -43,7 +44,7 @@
   - name: _l5d_ns
     value: {{.ControlPlaneNamespace}}
   - name: _l5d_trustdomain
-    value: {{.ClusterDomain}}
+    value: {{.Identity.TrustDomain}}
   - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
     value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
   - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
@@ -61,10 +62,8 @@
   ports:
   - containerPort: {{.Port.Inbound}}
     name: linkerd-proxy
-    protocol: TCP
   - containerPort: {{.Port.Admin}}
     name: linkerd-admin
-    protocol: TCP
   readinessProbe:
     httpGet:
       path: /ready
