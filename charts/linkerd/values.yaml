@@ -10,7 +10,7 @@ Namespace: &namespace linkerd
 
 # controller configuration
 ControllerImage: gcr.io/linkerd-io/controller
-ControllerLogLevel: info
+ControllerLogLevel: &controller_log_level info
 ControllerReplicas: 3
 ControllerResources: &controller_resources
   CPU:
@@ -66,6 +66,12 @@ HeartbeatResources:
   <<: *controller_resources
 HeartbeatSchedule: "21 3 * * * "
 
+# prometheus configuration
+PrometheusImage: prom/prometheus:v2.11.1
+PrometheusLogLevel: *controller_log_level
+PrometheusResources:
+  <<: *controller_resources
+
 # proxy configuration
 Proxy:
   ClusterDomain: *cluster_domain
@@ -93,6 +99,7 @@ Proxy:
   InboundAcceptKeepAlive: 10000ms
   LogLevel: warn,linkerd2_proxy=info
   OutboundAcceptKeepAlive: 10000ms
+  OutboundRouterCapacity: 10000
   Port: &proxy_ports
     Admin: 4191
     Control: 4190

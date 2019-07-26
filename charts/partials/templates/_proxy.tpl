@@ -3,7 +3,7 @@
   - name: LINKERD2_PROXY_LOG
     value: {{.LogLevel}}
   - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-    value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .ControlPlaneNamespace .ClusterDomain) (eq .Component "controller")}}
+    value: {{ternary "localhost.:8086" (printf "linkerd-destination.%s.svc.%s:8086" .ControlPlaneNamespace .ClusterDomain) (eq .Component "linkerd-controller")}}
   - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
     value: 0.0.0.0:{{.Port.Control}}
   - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -26,6 +26,10 @@
         fieldPath: metadata.namespace
   - name: LINKERD2_PROXY_DESTINATION_CONTEXT
     value: ns:$(_pod_ns)
+  {{ if eq .Component "linkerd-prometheus" -}}
+  - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
+    value: {{.OutboundRouterCapacity | quote}}
+  {{ end -}}
   - name: LINKERD2_PROXY_IDENTITY_DIR
     value: /var/run/linkerd/identity/end-entity
   - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -35,7 +39,7 @@
     value: /var/run/secrets/kubernetes.io/serviceaccount/token
   - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
     {{- $identitySvcAddr := printf "linkerd-identity.%s.svc.%s:8080" .ControlPlaneNamespace .ClusterDomain }}
-    value: {{ternary "localhost:8080" $identitySvcAddr (eq .Component "identity")}}
+    value: {{ternary "localhost:8080" $identitySvcAddr (eq .Component "linkerd-identity")}}
   - name: _pod_sa
     valueFrom:
       fieldRef:

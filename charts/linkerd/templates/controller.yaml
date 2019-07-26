@@ -46,7 +46,7 @@ spec:
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Proxy "Component" "controller" -}}
+{{ $_ := set .Proxy "Component" "linkerd-controller" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
