@@ -42,7 +42,7 @@ spec:
     port: 8086
     targetPort: 8086
 ---
-{{ if not .Proxy.Image.Version -}}
+{{ if empty .Proxy.Image.Version -}}
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
