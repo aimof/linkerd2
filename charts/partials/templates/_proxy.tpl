@@ -77,6 +77,7 @@
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     runAsUser: {{.UID}}
+  terminationMessagePolicy: FallbackToLogsOnError
   volumeMounts:
   - mountPath: /var/run/linkerd/identity/end-entity
     name: linkerd-identity-end-entity
