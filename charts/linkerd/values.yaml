@@ -138,6 +138,10 @@ ProxyInit:
       Limit: 50Mi
       Request: 10Mi
 
+# proxy injector configuration
+ProxyInjectorResources:
+  <<: *controller_resources
+
 # annotations
 CreatedByAnnotation: linkerd.io/created-by
 ProxyInjectAnnotation: linkerd.io/inject
