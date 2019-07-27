@@ -142,6 +142,10 @@ ProxyInit:
 ProxyInjectorResources:
   <<: *controller_resources
 
+# service profile validator configuration
+SPValidatorResources:
+  <<: *controller_resources
+
 # annotations
 CreatedByAnnotation: linkerd.io/created-by
 ProxyInjectAnnotation: linkerd.io/inject

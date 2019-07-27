@@ -1,48 +1,48 @@
 {{with .Values -}}
 ---
 ###
-### Proxy Injector
+### Service Profile Validator
 ###
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector
+  name: linkerd-sp-validator
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
   ports:
-  - name: proxy-injector
+  - name: sp-validator
     port: 443
-    targetPort: proxy-injector
+    targetPort: sp-validator
 ---
 {{ if empty .Proxy.Image.Version -}}
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Proxy "Component" "linkerd-proxy-injector" -}}
+{{ $_ := set .Proxy "Component" "linkerd-sp-validator" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  name: linkerd-proxy-injector
+  name: linkerd-sp-validator
   namespace: {{.Namespace}}
 spec:
   replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
   selector:
     matchLabels:
-      {{.ControllerComponentLabel}}: proxy-injector
+      {{.ControllerComponentLabel}}: sp-validator
       {{.ControllerNamespaceLabel}}: {{.Namespace}}
       {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
@@ -51,55 +51,50 @@ spec:
         {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
         {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
-        {{.ControllerComponentLabel}}: proxy-controller
+        {{.ControllerComponentLabel}}: sp-validator
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
       {{- if eq .HighAvailability true -}}
-      {{- $local := dict "Component" "proxy-injector" "Label" .ControllerComponentLabel -}}
+      {{- $local := dict "Component" "sp-validator" "Label" .ControllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
-        - "proxy-injector"
+        - "sp-validator"
         - "-log-level={{.ControllerLogLevel}}"
         image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9995
+            port: 9997
           initialDelaySeconds: 10
-        name: proxy-injector
+        name: sp-validator
         ports:
         - containerPort: 8443
-          name: proxy-injector
-        - containerPort: 9995
+          name: sp-validator
+        - containerPort: 9997
           name: admin-http
         readinessProbe:
-          failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9995
-        {{- include "partials.resources" .ProxyInjectorResources | nindent 8 }}
+            port: 9997
+          failureThreshold: 7
+        {{- include "partials.resources" .SPValidatorResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       initContainers:
       {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
-      serviceAccountName: linkerd-proxy-injector
+      serviceAccountName: linkerd-sp-validator
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-sp-validator-tls
       {{- include "partials.proxy-identity-volume" . | nindent 6 -}}
 {{end -}}

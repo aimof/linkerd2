@@ -1,94 +1,84 @@
 {{with .Values -}}
 ---
 ###
-### Proxy Injector RBAC
+### Service Profile Validator RBAC
 ###
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-sp-validator
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["list", "get", "watch"]
-- apiGroups: [""]
   resources: ["pods"]
   verbs: ["list"]
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
-  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-sp-validator
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 subjects:
 - kind: ServiceAccount
-  name: linkerd-proxy-injector
+  name: linkerd-sp-validator
   namespace: {{.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Namespace}}-sp-validator
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector
+  name: linkerd-sp-validator
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 ---
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-sp-validator-tls
   namespace: {{ .Namespace }}
   labels:
-    {{ .ControllerComponentLabel }}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
 type: Opaque
 data:
-  {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Namespace) 365 -}}
+  {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Namespace) 365 -}}
   crt.pem: {{ b64enc $ca.Cert }}
   key.pem: {{ b64enc $ca.Key }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
+kind: ValidatingWebhookConfiguration
 metadata:
-  name: linkerd-proxy-injector-webhook-config
+  name: linkerd-sp-validator-webhook-config
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
+    {{.ControllerComponentLabel}}: sp-validator
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 webhooks:
-- name: linkerd-proxy-injector.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: linkerd.io/is-control-plane
-      operator: DoesNotExist
+- name: linkerd-sp-validator.linkerd.io
   clientConfig:
     service:
-      name: linkerd-proxy-injector
+      name: linkerd-sp-validator
       namespace: {{ .Namespace }}
       path: "/"
     caBundle: {{ b64enc $ca.Cert }}
   failurePolicy: {{ternary "Fail" "Ignore"  (eq .HighAvailability true)}}
   rules:
-  - operations: [ "CREATE" ]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
+  - operations: [ "CREATE" , "UPDATE" ]
+    apiGroups: ["linkerd.io"]
+    apiVersions: ["v1alpha1", "v1alpha2"]
+    resources: ["serviceprofiles"]
   {{- if empty .OmitWebhookSideEffects }}
   sideEffects: None
   {{- end -}}
