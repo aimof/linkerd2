@@ -146,6 +146,10 @@ ProxyInjectorResources:
 SPValidatorResources:
   <<: *controller_resources
 
+# tap configuration
+TapResources:
+  <<: *controller_resources
+
 # annotations
 CreatedByAnnotation: linkerd.io/created-by
 ProxyInjectAnnotation: linkerd.io/inject
