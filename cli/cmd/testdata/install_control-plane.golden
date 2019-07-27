@@ -1764,6 +1764,9 @@ spec:
   - name: grpc
     port: 8088
     targetPort: 8088
+  - name: apiservice
+    port: 8089
+    targetPort: 8089
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -1807,6 +1810,8 @@ spec:
         ports:
         - containerPort: 8088
           name: grpc
+        - containerPort: 8089
+          name: apiservice
         - containerPort: 9998
           name: admin-http
         readinessProbe:
@@ -1817,6 +1822,10 @@ spec:
         resources: {}
         securityContext:
           runAsUser: 2103
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
@@ -1936,6 +1945,9 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
+      - name: tls
+        secret:
+          secretName: linkerd-tap-tls
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
