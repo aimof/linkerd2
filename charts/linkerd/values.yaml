@@ -150,6 +150,11 @@ SPValidatorResources:
 TapResources:
   <<: *controller_resources
 
+# web configuration
+WebImage: gcr.io/linkerd-io/web
+WebResources:
+  <<: *controller_resources
+
 # annotations
 CreatedByAnnotation: linkerd.io/created-by
 ProxyInjectAnnotation: linkerd.io/inject

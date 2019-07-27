@@ -1,48 +1,51 @@
 {{with .Values -}}
 ---
 ###
-### Tap
+### Web
 ###
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-tap
+  name: linkerd-web
   namespace: {{.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: tap
+    {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.ControllerComponentLabel}}: tap
+    {{.ControllerComponentLabel}}: web
   ports:
-  - name: grpc
-    port: 8088
-    targetPort: 8088
+  - name: http
+    port: 8084
+    targetPort: 8084
+  - name: admin-http
+    port: 9994
+    targetPort: 9994
 ---
 {{ if empty .Proxy.Image.Version -}}
 {{ $_ := set .Proxy.Image "Version" $.Chart.AppVersion -}}
 {{ end -}}
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Proxy "Component" "linkerd-tap" -}}
+{{ $_ := set .Proxy "Component" "linkerd-web" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
   labels:
-    {{.ControllerComponentLabel}}: tap
+    {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  name: linkerd-tap
+  name: linkerd-web
   namespace: {{.Namespace}}
 spec:
-  replicas: {{ternary .ControllerReplicas 1 (eq .HighAvailability true)}}
+  replicas: 1
   selector:
     matchLabels:
-      {{.ControllerComponentLabel}}: tap
+      {{.ControllerComponentLabel}}: web
       {{.ControllerNamespaceLabel}}: {{.Namespace}}
       {{- include "partials.proxy.labels" .Proxy | nindent 6}}
   template:
@@ -51,44 +54,47 @@ spec:
         {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" $.Chart.Version) .CliVersion}}
         {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
       labels:
-        {{.ControllerComponentLabel}}: tap
+        {{.ControllerComponentLabel}}: web
         {{.ControllerNamespaceLabel}}: {{.Namespace}}
         {{- include "partials.proxy.labels" .Proxy | nindent 8}}
     spec:
-      {{- if eq .HighAvailability true -}}
-      {{- $local := dict "Component" "tap" "Label" .ControllerComponentLabel -}}
-      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
-      {{- end }}
       containers:
       - args:
-        - "tap"
+        - "-api-addr=linkerd-controller-api.{{.Namespace}}.svc.{{.ClusterDomain}}:8085"
+        - "-grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000"
         - "-controller-namespace={{.Namespace}}"
         - "-log-level={{.ControllerLogLevel}}"
-        image: {{.ControllerImage}}:{{default $.Chart.AppVersion .ControllerImageVersion}}
+        image: {{.WebImage}}:{{default $.Chart.AppVersion .WebImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
-            port: 9998
+            port: 9994
           initialDelaySeconds: 10
-        name: tap
+        name: web
         ports:
-        - containerPort: 8088
-          name: grpc
-        - containerPort: 9998
+        - containerPort: 8084
+          name: http
+        - containerPort: 9994
           name: admin-http
         readinessProbe:
           failureThreshold: 7
           httpGet:
             path: /ready
-            port: 9998
-        {{- include "partials.resources" .TapResources | nindent 8 }}
+            port: 9994
+        {{- include "partials.resources" .WebResources | nindent 8 }}
         securityContext:
           runAsUser: {{.ControllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
       {{- include "partials.proxy" .Proxy | nindent 6 -}}
       initContainers:
       {{- include "partials.proxy-init" .ProxyInit | nindent 6 }}
-      serviceAccountName: linkerd-tap
+      serviceAccountName: linkerd-web
       volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
       {{- include "partials.proxy-identity-volume" . | nindent 6 -}}
-{{- end -}}
+{{end -}}
